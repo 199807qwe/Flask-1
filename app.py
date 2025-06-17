@@ -47,5 +47,23 @@ def get_quotes() -> list[dict[str, any]]:
         """Функция неявно преобразовывает список словарей в JSON"""
         return quotes
 
+#@app.route("/params/<value>")
+#def param_example(value: any):
+#    return jsonify(param=value, param_type=str(type(value)))
+#
+@app.route("/params/<value>")
+def param_example(value: str):
+    return jsonify(param=value)
+
+# URL: /quotes
+@app.route("/quotes/<int:quote_id>")
+def get_quote(quote_id: int) -> dict:
+        """Функция возвращает цитату по значению ключа id=quote_id"""
+        for quote in quotes:
+            if quote["id"] == quote_id:
+                return jsonify(quote), 200 # jsonify(str(quote['id']))
+        return {"error": f"Quote with id={quote_id} not found"}, 404
+
+
 if __name__ == "__main__":
     app.run(debug=True)
