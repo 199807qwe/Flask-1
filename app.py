@@ -97,9 +97,9 @@ def get_quotes() -> list[dict[str, any]]:
 #def param_example(value: any):
 #    return jsonify(param=value, param_type=str(type(value)))
 #
-@app.route("/params/<value>") #Это пример динамического URL
-def param_example(value: str):
-    return jsonify(param=value)
+# @app.route("/params/<value>") #Это пример динамического URL
+# def param_example(value: str):
+#     return jsonify(param=value)
 
 # URL: /quotes
 @app.route("/quotes/<int:quote_id>")
@@ -116,10 +116,10 @@ def quotes_count():
     return jsonify(count=len(quotes))
 
 
-@app.route("/quotes/random", methods=["GET"])
-def random_quote() -> dict:
-    """Function for task4 of Practice part 1."""
-    return jsonify(choice(quotes))
+# @app.route("/quotes/random", methods=["GET"])
+# def random_quote() -> dict:
+#     """Function for task4 of Practice part 1."""
+#     return jsonify(choice(quotes))
 
 def generate_new_id():
     if not quotes:
