@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from typing import Any
 from random import choice
 
@@ -78,6 +78,29 @@ def random_quote() -> dict:
     """Function for task4 of Practice part 1."""
     return jsonify(choice(quotes))
 
+#@app.route("/quotes", methods=['POST'])
+#def create_quote():
+#    data = request.json #json -> dict
+#    print("data = ", data)
+#    return {}, 201
+
+@app.route("/quotes", methods=['POST'])
+def create_quote():
+    """Функция создает овую цитату в списке."""
+    new_quote = request.json #json -> dict
+    last_quote = quotes[-1] #Последняя цитата в списке
+    new_id = last_quote["id"] + 1
+    new_quote["id"] = new_id
+    quotes.append(new_quote)
+    return jsonify(new_quote), 201
+
+@app.route("/quotes/<int:quote_id>", methods=["DELETED"])
+def delete_quote(quote_id: int):
+    for quote in quotes:
+        if quote["id"] == quote_id:
+            quotes.remove(quote)
+            return jsonify({"message": f"Quote with id={quote_id} has deleted"}), 200
+    return {"error": f"Quote with id={quote_id} not found"}, 404
 
 if __name__ == "__main__":
     app.run(debug=True)
