@@ -15,6 +15,15 @@ cursor.execute(select_quotes)
 quotes = cursor.fetchall()
 print(f"{quotes=}")
 
+#quotes_db = cursor.fetchall()
+#print(f"{quotes_db=}")
+
+#keys = ("id", "author", "text")
+#quotes = []
+#for quote_db in quotes_db:
+#    quote = dict(zip(keys, quote_db))
+#    print(f'{quote = }')
+
 # Закрыть курсор:
 cursor.close()
 
