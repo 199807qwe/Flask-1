@@ -94,7 +94,19 @@ def create_quote():
     quotes.append(new_quote)
     return jsonify(new_quote), 201
 
-@app.route("/quotes/<int:quote_id>", methods=["DELETED"])
+@app.route("/quotes/<int:id>", methods=['PUT'])
+def edit_quote(id):
+    new_data = request.json
+    for quote in quotes:
+        if quote["id"] == id:
+            if "author" in new_data:
+                quote["author"] = new_data["author"]
+            if "text" in new_data:
+                quote["text"] = new_data["text"]
+            return jsonify(quote), 200
+    return jsonify({"error": f"Quote not found"}), 404
+
+@app.route("/quotes/<int:quote_id>", methods=["DELETE"])
 def delete_quote(quote_id: int):
     for quote in quotes:
         if quote["id"] == quote_id:
