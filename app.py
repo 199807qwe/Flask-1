@@ -6,7 +6,7 @@ from pathlib import Path
 import sqlite3
 
 BASE_DIR = Path(__file__).parent
-path_to_db = BASE_DIR / "store.db" # <- тут путь к БД
+path_to_db = BASE_DIR / "quotes.db" # <- тут путь к БД
 
 
 app = Flask(__name__)
@@ -24,6 +24,23 @@ def close_connection(exception):
     db = getattr(g, '_database', None)
     if db is not None:
         db.close()
+
+
+def new_table(name_db: str):
+    create_table = """
+    CREATE TABLE IF NOT EXISTS quotes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    author TEXT NOT NULL,
+    text TEXT NOT NULL,
+    rating INTEGER NOT NULL
+    );
+    """
+    connection = sqlite3.connect(name_db)
+    cursor = connection.cursor()
+    cursor.execute(create_table)
+    connection.commit()
+    cursor.close()
+    connection.close()
 
 #about_me = {
 #    "name": "Ivan",
@@ -195,17 +212,32 @@ def edit_quote(quote_id):
 
 
 
-@app.route("/quotes", methods=["POST"])
+# @app.route("/quotes", methods=["POST"])
+# def create_quote():
+#     new_quote = request.json
+#     if not set(new_quote.keys()) - set(KEYS):
+#         new_id = generate_new_id()
+#         new_quote["id"]= new_id
+#         new_quote["rating"] = 1
+#         quotes.append(new_quote)
+#     else:
+#         return jsonify(error="Send bad data to create new quote"), 400
+#     return jsonify(new_quote), 201
+
+
+@app.route("/quotes", methods=['POST'])
 def create_quote():
     new_quote = request.json
-    if not set(new_quote.keys()) - set(KEYS):
-        new_id = generate_new_id()
-        new_quote["id"]= new_id
-        new_quote["rating"] = 1
-        quotes.append(new_quote)
-    else:
-        return jsonify(error="Send bad data to create new quote"), 400
+    insert_quote = "INSERT INTO quotes (quthor, text, rating) VALUES (?, ?, ?)"
+    connection = get_db()
+    cursor = connection.cursor()
+    cursor.execute(insert_quote, (new_quote['author'],new_quote['text'], new_quote['rating']))
+    answer = cursor.lastrowid # Получаем из БД ID новой цитаты
+    connection.commit()
+    new_quote['id'] = answer
     return jsonify(new_quote), 201
+
+
 
 
 @app.route("/quotes/<int:quote_id>", methods=["DELETE"])
@@ -248,4 +280,5 @@ def filter_quotes_v2():
   
 
 if __name__ == "__main__":
+    new_table('quotes.db')
     app.run(debug=True)
