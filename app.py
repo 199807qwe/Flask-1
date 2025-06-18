@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, g, abort
 from typing import Any
 from random import choice
 from http import HTTPStatus
@@ -12,6 +12,18 @@ path_to_db = BASE_DIR / "store.db" # <- тут путь к БД
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 KEYS = ('author','text','rating')
+
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(path_to_db)
+    return db
+
+@app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
 
 #about_me = {
 #    "name": "Ivan",
@@ -69,7 +81,7 @@ def get_quotes() -> list[dict[str, any]]:
         connection = sqlite3.connect("store.db")
 
         # Создаем cursor, он позволяет делать SQL-запросы
-        cursor = connection.cursor()
+        cursor = get_db().cursor()
 
         # Выполняем запрос:
         cursor.execute(select_quotes)
@@ -79,14 +91,14 @@ def get_quotes() -> list[dict[str, any]]:
         #print(f"{quotes=}")
 
         # Закрыть курсор:
-        cursor.close()
+        #cursor.close()  Из-за функци (cursor = get_db().cursor()) будет закрываться автоматически
 
         # Закрыть соединение:
-        connection.close()
+        #connection.close()     Из-за функци (cursor = get_db().cursor()) будет закрываться автоматически
         # Подготовка данных для отправки в правильном формате
         # Необходимо выполнить преобразование: 
         # list[tuple] -> list[dict]
-        keys = ("id", "author", "text")
+        keys = ("id", "author", "text", "rating")
         quotes = []
         for quote_db in quotes_db:
             quote = dict(zip(keys, quote_db))
@@ -105,15 +117,28 @@ def get_quotes() -> list[dict[str, any]]:
 @app.route("/quotes/<int:quote_id>")
 def get_quote(quote_id: int) -> dict:
         """Функция возвращает цитату по значению ключа id=quote_id"""
-        for quote in quotes:
-            if quote["id"] == quote_id:
-                return jsonify(quote), 200 # jsonify(str(quote['id']))
+        select_quote = "SELECT * FROM quotes WHERE id = ?"
+        cursor = get_db().cursor()
+        cursor.execute(select_quote, (quote_id, ))
+        quote_db = cursor.fetchone() #Получаем одну запись из БД
+        if quote_db:
+            keys = ("id", "author", "text", "rating")
+            quote = dict(zip(keys, quote_db))
+        # for quote in quotes:
+        #     if quote["id"] == quote_id:
+            return jsonify(quote), 200 # jsonify(str(quote['id']))
         return {"error": f"Quote with id={quote_id} not found"}, 404
 
 @app.get("/quotes/count")
 def quotes_count():
     """Function for task3 of Practice part 1."""
-    return jsonify(count=len(quotes))
+    select_count = "SELECT count(*) as count FROM quotes"
+    cursor = get_db().cursor()
+    cursor.execute(select_count)
+    count = cursor.fetchone()
+    if count:
+        return jsonify(count=count[0]), 200
+    abort(503) # Вернет ошибку 503 (База не доступна)
 
 
 # @app.route("/quotes/random", methods=["GET"])
