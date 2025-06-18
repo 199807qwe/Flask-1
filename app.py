@@ -4,10 +4,10 @@ from random import choice
 from http import HTTPStatus
 from pathlib import Path
 import sqlite3
+from werkzeug.exceptions import HTTPException
 
 BASE_DIR = Path(__file__).parent
 path_to_db = BASE_DIR / "quotes.db" # <- тут путь к БД
-
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
@@ -25,6 +25,10 @@ def close_connection(exception):
     if db is not None:
         db.close()
 
+@app.errorhandler(HTTPException)
+def handle_exception(e):
+    """Функция для перехвата HTTP ошибок и возврата в виде JSON"""
+    return jsonify({"message": e.description}), e.code
 
 def new_table(name_db: str):
     create_table = """
@@ -42,93 +46,21 @@ def new_table(name_db: str):
     cursor.close()
     connection.close()
 
-#about_me = {
-#    "name": "Ivan",
-#    "surname": "Gulin",
-#    "email": "19980721qwe@gmail.com",
-#}
-
-# quotes = [
-#     {
-#         "id": 3,
-#         "author": "Rick Cook",
-#         "text": "Программирование сегодня — это гонка разработчиков программ, стремящихся писать программы с большей и лучшей идиотоустойчивостью, и вселенной, которая пытается создать больше отборных идиотов. Пока вселенная побеждает.",
-#         "rating": 4
-#     },
-#     {
-#         "id": 5,
-#         "author": "Waldi Ravens",
-#         "text": "Программирование на С похоже на быстрые танцына только что отполированном полу людей с острыми бритвами вруках.",
-#         "rating": 3
-#     },
-#     {
-#         "id": 6,
-#         "author": "Mosher’s Law of Software Engineering",
-#         "text": "Не волнуйтесь, если что-то не работает. Еслибы всё работало, вас бы уволили.",
-#         "rating": 4
-#     },
-#     {
-#         "id": 8,
-#         "author": "Yoggi Berra",
-#         "text": "В теории, теория и практика неразделимы. Напрактике это не так.",
-#         "rating": 2
-#     },
-# ]
-# Нужно больше цитат? https://tproger.ru/devnull/programming-quotes/
-
-#@app.route("/") # Это первый УРЛ, который будет обрабатывать
-#def hello_world(): # Эта функция-обработчик будет вызвана при запросе УРЛа.
-#    return jsonify(data="Hello, World!!!")
-
-
-#@app.route("/about") #Это статический URL
-#def about():
-#    return about_me
-
-
-
-
 # URL: /quotes
 @app.route("/quotes")
 def get_quotes() -> list[dict[str, any]]:
         """Функция неявно преобразовывает список словарей в JSON"""
         select_quotes = "SELECT * FROM quotes"
-
-        # Подключение в БД
         connection = sqlite3.connect("store.db")
-
-        # Создаем cursor, он позволяет делать SQL-запросы
         cursor = get_db().cursor()
-
-        # Выполняем запрос:
         cursor.execute(select_quotes)
-
-        # Извлекаем результаты запроса
         quotes_db = cursor.fetchall() #get list[tuple]
-        #print(f"{quotes=}")
-
-        # Закрыть курсор:
-        #cursor.close()  Из-за функци (cursor = get_db().cursor()) будет закрываться автоматически
-
-        # Закрыть соединение:
-        #connection.close()     Из-за функци (cursor = get_db().cursor()) будет закрываться автоматически
-        # Подготовка данных для отправки в правильном формате
-        # Необходимо выполнить преобразование: 
-        # list[tuple] -> list[dict]
         keys = ("id", "author", "text", "rating")
         quotes = []
         for quote_db in quotes_db:
             quote = dict(zip(keys, quote_db))
             quotes.append(quote)
         return jsonify(quotes), 200
-
-#@app.route("/params/<value>")
-#def param_example(value: any):
-#    return jsonify(param=value, param_type=str(type(value)))
-#
-# @app.route("/params/<value>") #Это пример динамического URL
-# def param_example(value: str):
-#     return jsonify(param=value)
 
 # URL: /quotes
 @app.route("/quotes/<int:quote_id>")
@@ -157,73 +89,10 @@ def quotes_count():
         return jsonify(count=count[0]), 200
     abort(503) # Вернет ошибку 503 (База не доступна)
 
-
-# @app.route("/quotes/random", methods=["GET"])
-# def random_quote() -> dict:
-#     """Function for task4 of Practice part 1."""
-#     return jsonify(choice(quotes))
-
 def generate_new_id():
     if not quotes:
         return 1
     return quotes[-1]["id"] + 1
-
-#@app.route("/quotes", methods=['POST'])
-#def create_quote():
-#    data = request.json #json -> dict
-#    print("data = ", data)
-#    return {}, 201
-
-#@app.route("/quotes", methods=['POST'])
-#def create_quote():
-#    """Функция создает овую цитату в списке."""
-#    new_quote = request.json #json -> dict
-#    last_quote = quotes[-1] #Последняя цитата в списке
-#    new_id = last_quote["id"] + 1
-#    new_quote["id"] = new_id
-#    quotes.append(new_quote)
-#    return jsonify(new_quote), 201
-
-#@app.route("/quotes/<int:id>", methods=['PUT'])
-@app.route("/quotes/<int:quote_id>", methods=['PUT'])
-def edit_quote(quote_id):
-    new_data = request.json
-#    for quote in quotes:
-#        if quote["id"] == id:
-#            if "author" in new_data:
-#                quote["author"] = new_data["author"]
-#            if "text" in new_data:
-#                quote["text"] = new_data["text"]
-#            return jsonify(quote), 200
-#    return jsonify({"error": f"Quote not found"}), 404
-#    keys = ('author', 'text', 'rating')
-#    if not set(new_data.keys()) - set(keys):
-    if not set(new_data.keys()) - set(KEYS):
-        for quote in quotes:
-            if quote["id"] == quote_id:
-                if "rating" in new_data and new_data['rating'] not in range(1, 6):
-                    new_data.pop('rating')                   
-                quote.update(new_data)
-                return jsonify(quote), 200
-    else:
-        return jsonify(error="Send bad data to update"), 400
-    return jsonify({"error": "Quote not found"}), 404
-
-
-
-
-# @app.route("/quotes", methods=["POST"])
-# def create_quote():
-#     new_quote = request.json
-#     if not set(new_quote.keys()) - set(KEYS):
-#         new_id = generate_new_id()
-#         new_quote["id"]= new_id
-#         new_quote["rating"] = 1
-#         quotes.append(new_quote)
-#     else:
-#         return jsonify(error="Send bad data to create new quote"), 400
-#     return jsonify(new_quote), 201
-
 
 @app.route("/quotes", methods=['POST'])
 def create_quote():
@@ -238,15 +107,48 @@ def create_quote():
     return jsonify(new_quote), 201
 
 
+@app.route("/quotes/<int:quote_id>", methods=['PUT'])
+def edit_quote(quote_id):
+    new_data = request.json
+    attributes: set = set(new_data.keys()) & {'author', 'rating', 'text'}
+    if "rating" in attributes and new_data['rating'] not in range(1, 6):
+        #Валидируем новое значение рейтинга и в случае успеха обновляем данные
+        attributes.remove("rating")
+    if attributes:
+        update_quotes = f"UPDATE quotes SET {', '.join(attr + '=?' for attr in attributes)} WHERE id=?"
+        params = tuple(new_data.get(attr) for attr in attributes) + (quote_id,)
+        connection = get_db()
+        cursor = connection.cursor()
+        cursor.execute(update_quotes, params)
+        rows = cursor.rowcount
+        if rows:
+            connection.commit()
+            cursor.close()
+            responce, status_code = get_quote(quote_id)
+            if status_code == 200:
+                return responce, HTTPStatus.OK
+        connection.rollback()
+    else:
+        responce, status_code = get_quote(quote_id)
+        if status_code == 200:
+            return responce, HTTPStatus.OK
+    abort (404, f"Quote with id={quote_id} not found.",)
 
 
 @app.route("/quotes/<int:quote_id>", methods=["DELETE"])
 def delete_quote(quote_id: int):
-    for quote in quotes:
-        if quote["id"] == quote_id:
-            quotes.remove(quote)
-            return jsonify({"message": f"Quote with id={quote_id} has deleted"}), 200
-    return {"error": f"Quote with id={quote_id} not found"}, 404
+    delete_sql = f"DELETE FROM quotes WHERE id = ?"
+    params = (quote_id,)
+    connection = get_db()
+    cursor = connection.cursor()
+    cursor.execute(delete_sql, params)
+    rows = cursor.rowcount #
+    if rows:
+        connection.commit()
+        cursor.close()
+        return jsonify({"message": f"Quote with id {quote_id} has delete."}), 200
+    connection.rollback()
+    abort(404, f"Quote with id={quote_id} not found")
 
 @app.route("/quotes/filter", methods=['GET'])
 def filter_quotes():
